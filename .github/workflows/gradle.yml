@@ -23,6 +23,9 @@ jobs:
           java-version: '11' # Specify the JDK version you want to use
           distribution: 'adopt'
 
+      - name: Grant execute permission for Gradle wrapper
+        run: chmod +x ./gradlew
+
       - name: Build with Gradle
         run: ./gradlew build
 
