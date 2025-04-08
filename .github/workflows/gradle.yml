@@ -32,9 +32,5 @@ jobs:
       - name: Run tests and check coverage
         run: ./gradlew check
 
-      - name: Upload coverage to Codecov
-        uses: codecov/codecov-action@v3
-        with:
-          files: build/reports/jacoco/test/jacocoTestReport.xml
-          flags: unittests
-          name: codecov-coverage
+      - name: Run tests and generate JaCoCo report
+        run: ./gradlew test jacocoTestReport

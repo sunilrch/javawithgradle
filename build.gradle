@@ -57,6 +57,8 @@ jacocoTestReport {
     reports {
         xml.required = true
         html.required = true
+        html.outputLocation = file("${project.rootDir}/coverage-report") // ← Custom folder
+        xml.outputLocation = file("${project.rootDir}/coverage-report/jacocoTestReport.xml")
     }
 }
 
