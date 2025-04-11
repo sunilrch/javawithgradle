@@ -34,3 +34,12 @@ jobs:
 
       - name: Run tests and generate JaCoCo report
         run: ./gradlew test jacocoTestReport
+
+      - name: Send Slack notification if coverage failed
+        if: failure()  # This triggers only if a previous step failed
+        env:
+          SLACK_WEBHOOK_URL: ${{ secrets.SLACK_WEBHOOK_URL }}
+        run: |
+          curl -X POST -H 'Content-type: application/json' --data "{
+          \"text\": \"🚨 *Code coverage failed* in build #${{ github.run_number }} for branch *${{ github.ref_name }}*\"
+          }" $SLACK_WEBHOOK_URL
