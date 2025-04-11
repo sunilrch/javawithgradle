@@ -12,8 +12,6 @@ on:
 jobs:
   build:
     runs-on: ubuntu-latest
-    outputs:
-      status: ${{ job.status }}
 
     steps:
       - name: Checkout code
@@ -37,29 +35,34 @@ jobs:
       - name: Run tests and generate JaCoCo report
         run: ./gradlew test jacocoTestReport
 
-  notify:
-    needs: build
-    runs-on: ubuntu-latest
-    if: always()  # Ensures this runs whether build succeeds or fails
-
-    steps:
-      - name: Send Slack notification
+      # 👇 Slack message on success
+      - name: Notify Slack – Success
+        if: success()
         env:
           SLACK_WEBHOOK_URL: ${{ secrets.SLACK_WEBHOOK_URL }}
         run: |
-          if [ "${{ needs.build.result }}" == "success" ]; then
-            STATUS="✅ Build succeeded"
-            COLOR="#36a64f"
-          else
-            STATUS="❌ Build failed"
-            COLOR="#ff0000"
-          fi
-
           curl -X POST -H 'Content-type: application/json' --data "{
             \"attachments\": [{
-              \"fallback\": \"$STATUS\",
-              \"color\": \"$COLOR\",
-              \"title\": \"$STATUS\",
+              \"fallback\": \"✅ Build succeeded\",
+              \"color\": \"#36a64f\",
+              \"title\": \"✅ Build succeeded\",
+              \"text\": \"Build #${{ github.run_number }} on branch *${{ github.ref_name }}*.\",
+              \"footer\": \"GitHub Actions\",
+              \"ts\": $(date +%s)
+            }]
+          }" $SLACK_WEBHOOK_URL
+
+      # 👇 Slack message on failure
+      - name: Notify Slack – Failure
+        if: failure()
+        env:
+          SLACK_WEBHOOK_URL: ${{ secrets.SLACK_WEBHOOK_URL }}
+        run: |
+          curl -X POST -H 'Content-type: application/json' --data "{
+            \"attachments\": [{
+              \"fallback\": \"❌ Build failed\",
+              \"color\": \"#ff0000\",
+              \"title\": \"❌ Build failed\",
               \"text\": \"Build #${{ github.run_number }} on branch *${{ github.ref_name }}*.\",
               \"footer\": \"GitHub Actions\",
               \"ts\": $(date +%s)
