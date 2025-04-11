@@ -11,8 +11,9 @@ on:
 
 jobs:
   build:
-
     runs-on: ubuntu-latest
+    outputs:
+      status: ${{ job.status }}
 
     steps:
       - name: Checkout code
@@ -36,11 +37,31 @@ jobs:
       - name: Run tests and generate JaCoCo report
         run: ./gradlew test jacocoTestReport
 
-      - name: Send Slack notification if coverage failed
-        if: failure()  # This triggers only if a previous step failed
+  notify:
+    needs: build
+    runs-on: ubuntu-latest
+    if: always()  # Ensures this runs whether build succeeds or fails
+
+    steps:
+      - name: Send Slack notification
         env:
           SLACK_WEBHOOK_URL: ${{ secrets.SLACK_WEBHOOK_URL }}
         run: |
+          if [ "${{ needs.build.result }}" == "success" ]; then
+            STATUS="✅ Build succeeded"
+            COLOR="#36a64f"
+          else
+            STATUS="❌ Build failed"
+            COLOR="#ff0000"
+          fi
+
           curl -X POST -H 'Content-type: application/json' --data "{
-          \"text\": \"🚨 *Code coverage failed* in build #${{ github.run_number }} for branch *${{ github.ref_name }}*\"
+            \"attachments\": [{
+              \"fallback\": \"$STATUS\",
+              \"color\": \"$COLOR\",
+              \"title\": \"$STATUS\",
+              \"text\": \"Build #${{ github.run_number }} on branch *${{ github.ref_name }}*.\",
+              \"footer\": \"GitHub Actions\",
+              \"ts\": $(date +%s)
+            }]
           }" $SLACK_WEBHOOK_URL
