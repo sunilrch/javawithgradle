@@ -1,0 +1,91 @@
+
+
+./coverage-report/index.html
+
+name: Java CI
+
+on:
+  push:
+    branches:
+      - main
+  pull_request:
+    branches:
+      - main
+  workflow_dispatch:
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v2
+
+      - name: Set up JDK
+        uses: actions/setup-java@v2
+        with:
+          java-version: '11'
+          distribution: 'adopt'
+
+      - name: Grant execute permission for Gradle wrapper
+        run: chmod +x ./gradlew
+
+      - name: Build with Gradle
+        run: ./gradlew build
+
+      - name: Run tests and check coverage
+        run: ./gradlew check
+
+      - name: Run tests and generate JaCoCo report
+        run: ./gradlew test jacocoTestReport
+
+      - name: Check code coverage threshold (fail if too low)
+        run: |
+          sudo apt-get update && sudo apt-get install -y libxml2-utils
+          xmllint --html --xpath '//table//tr' .\coverage-report\index.html 2>/dev/null | \
+           sed -n 's:.*<tr[^>]*>\(.*\)</tr>.*:\1:p' | \
+           sed 's:</td>:\t:g; s:</th>:\t:g' | \
+           sed 's:<[^>]*>::g'
+          COVERAGE=$(xmllint --xpath "string(//report/counter[@type='LINE']/@covered)" build/reports/jacoco/test/jacocoTestReport.xml)
+          MISSED=$(xmllint --xpath "string(//report/counter[@type='LINE']/@missed)" build/reports/jacoco/test/jacocoTestReport.xml)
+
+          TOTAL=$((COVERAGE + MISSED))
+          PERCENT=$(( 100 * COVERAGE / TOTAL ))
+
+          echo "Line Coverage: $PERCENT%"
+
+          if [ "$PERCENT" -lt 80 ]; then  
+          echo "❌ Code coverage below threshold: ${PERCENT}%"
+          exit 1  # 🔥 This will cause the build to fail
+          fi
+
+      - name: Notify Slack – Success
+        if: success()
+        env:
+            SLACK_WEBHOOK_URL: ${{ secrets.SLACK_WEBHOOK_URL }}
+        run: |
+            curl -X POST -H 'Content-type: application/json' --data "{
+              \"attachments\": [{
+                \"color\": \"#36a64f\",
+                \"title\": \"✅ Build succeeded\",
+                \"text\": \"Build #${{ github.run_number }} on branch *${{ github.ref_name }}*.\",
+                \"footer\": \"GitHub Actions\",
+                \"ts\": $(date +%s)
+              }]
+            }" $SLACK_WEBHOOK_URL
+
+      # ❌ Slack message on build or coverage failure
+      - name: Notify Slack – Failure
+        if: failure()
+        env:
+          SLACK_WEBHOOK_URL: ${{ secrets.SLACK_WEBHOOK_URL }}
+        run: |
+          curl -X POST -H 'Content-type: application/json' --data "{
+            \"attachments\": [{
+              \"color\": \"#ff0000\",
+              \"title\": \"❌ Build failed\",
+              \"text\": \"Build #${{ github.run_number }} on branch *${{ github.ref_name }}*.\",
+              \"footer\": \"GitHub Actions\",
+              \"ts\": $(date +%s)
+            }]
+          }" $SLACK_WEBHOOK_URL
