@@ -1,5 +1,5 @@
 # Simple Gradle Java APP
-Simple Java App Created with Gradle
+Simple Java App Created with Gradle...
 
 Please read this Article to make the best use of this git repo
 
