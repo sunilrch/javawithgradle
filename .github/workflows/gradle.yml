@@ -37,6 +37,7 @@ jobs:
 
       - name: Check code coverage threshold (fail if too low)
         run: |
+          sudo apt update && sudo install libxml2-utils -y
           COVERAGE=$(xmllint --xpath "string(//report/counter[@type='LINE']/@covered)" build/reports/jacoco/test/jacocoTestReport.xml)
           MISSED=$(xmllint --xpath "string(//report/counter[@type='LINE']/@missed)" build/reports/jacoco/test/jacocoTestReport.xml)
 
